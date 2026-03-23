@@ -10,7 +10,8 @@ use crate::{
 };
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{
-    ArmCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+    ArmCoreAccessOptions, EmbeddedIceCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions,
+    XtensaCoreAccessOptions,
 };
 use std::{sync::Arc, time::Duration};
 
@@ -690,6 +691,10 @@ pub enum ResolvedCoreOptions {
         sequence: Arc<dyn ArmDebugSequence>,
         options: ArmCoreAccessOptions,
     },
+    /// EmbeddedICE (pre-CoreSight ARM9) — accessed via raw JTAG, no DAP.
+    EmbeddedIce {
+        options: EmbeddedIceCoreAccessOptions,
+    },
     Riscv {
         sequence: Arc<dyn RiscvDebugSequence>,
         options: RiscvCoreAccessOptions,
@@ -706,6 +711,7 @@ impl ResolvedCoreOptions {
             (CoreAccessOptions::Arm(options), DebugSequence::Arm(sequence)) => {
                 Self::Arm { sequence, options }
             }
+            (CoreAccessOptions::EmbeddedIce(options), _) => Self::EmbeddedIce { options },
             (CoreAccessOptions::Riscv(options), DebugSequence::Riscv(sequence)) => {
                 Self::Riscv { sequence, options }
             }
@@ -721,6 +727,7 @@ impl ResolvedCoreOptions {
     fn jtag_tap_index(&self) -> usize {
         match self {
             Self::Arm { options, .. } => options.jtag_tap.unwrap_or(0),
+            Self::EmbeddedIce { options } => options.jtag_tap.unwrap_or(0),
             Self::Riscv { options, .. } => options.jtag_tap.unwrap_or(0),
             Self::Xtensa { options, .. } => options.jtag_tap.unwrap_or(0),
         }
@@ -733,6 +740,10 @@ impl std::fmt::Debug for ResolvedCoreOptions {
             Self::Arm { options, .. } => f
                 .debug_struct("Arm")
                 .field("sequence", &"<ArmDebugSequence>")
+                .field("options", options)
+                .finish(),
+            Self::EmbeddedIce { options } => f
+                .debug_struct("EmbeddedIce")
                 .field("options", options)
                 .finish(),
             Self::Riscv { options, .. } => f

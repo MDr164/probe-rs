@@ -750,6 +750,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_core_start(&mut *core)
             }
+            // Armv5te uses EmbeddedICE (not DAP) — debug_core_start is a no-op here.
+            CoreType::Armv5te => Ok(()),
             _ => panic!("Logic inconsistency bug - non ARM core type passed {core_type:?}"),
         }
     }
@@ -773,6 +775,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_catch_set(core)
             }
+            // Armv5te uses EmbeddedICE vector catch, handled in Armv5te::reset_catch_set.
+            CoreType::Armv5te => Ok(()),
             _ => panic!("Logic inconsistency bug - non ARM core type passed {core_type:?}"),
         }
     }
@@ -796,6 +800,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_catch_clear(core)
             }
+            CoreType::Armv5te => Ok(()),
             _ => panic!("Logic inconsistency bug - non ARM core type passed {core_type:?}"),
         }
     }
@@ -849,6 +854,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
                 cortex_m_reset_system(interface)
             }
+            // Armv5te reset is vendor-specific (NUC980 CPURST); no default.
+            CoreType::Armv5te => Ok(()),
             _ => panic!("Logic inconsistency bug - non ARM core type passed {core_type:?}"),
         }
     }
@@ -1115,6 +1122,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 // as the initial PC value on a reset, see chapter A2.3.1 of the reference manual.
                 core.write_core_reg(PC.id, first_table_entries[RESET_VECTOR_OFFSET])?;
                 core.write_word_32(Vtor::get_mmio_address(), vtor.0)?;
+            }
+            CoreType::Armv5te => {
+                // ARM926EJ-S: just set the PC to the entry point in the vector table.
+                tracing::debug!("RAM flash start for ARMv5TEJ core with ID {}", core_id);
+                core.write_core_reg(PC.id, vector_table_addr)?;
             }
             _ => {
                 panic!("Logic inconsistency bug - non ARM core type passed {core_type:?}");

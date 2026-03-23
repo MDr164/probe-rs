@@ -3,7 +3,7 @@ use crate::{
     architecture::{
         arm::{
             ApV2Address, ArmDebugInterface, FullyQualifiedApAddress,
-            core::{CortexARState, CortexMState},
+            core::{CortexARState, CortexMState, armv5te::Armv5teState},
             dp::DpAddress,
         },
         riscv::{RiscvCoreState, communication_interface::RiscvCommunicationInterface},
@@ -279,6 +279,8 @@ impl CoreState {
 /// The architecture specific core state.
 #[derive(Debug)]
 pub enum SpecificCoreState {
+    /// The state of an ARMv5TEJ core (ARM926EJ-S, EmbeddedICE).
+    Armv5te(Armv5teState),
     /// The state of an ARMv6-M core.
     Armv6m(CortexMState),
     /// The state of an ARMv7-A core.
@@ -302,6 +304,7 @@ pub enum SpecificCoreState {
 impl SpecificCoreState {
     pub(crate) fn from_core_type(typ: CoreType) -> Self {
         match typ {
+            CoreType::Armv5te => SpecificCoreState::Armv5te(Armv5teState::new()),
             CoreType::Armv6m => SpecificCoreState::Armv6m(CortexMState::new()),
             CoreType::Armv7a => SpecificCoreState::Armv7a(CortexARState::new()),
             CoreType::Armv7r => SpecificCoreState::Armv7r(CortexARState::new()),
@@ -316,6 +319,7 @@ impl SpecificCoreState {
 
     pub(crate) fn core_type(&self) -> CoreType {
         match self {
+            SpecificCoreState::Armv5te(_) => CoreType::Armv5te,
             SpecificCoreState::Armv6m(_) => CoreType::Armv6m,
             SpecificCoreState::Armv7a(_) => CoreType::Armv7a,
             SpecificCoreState::Armv7r(_) => CoreType::Armv7r,

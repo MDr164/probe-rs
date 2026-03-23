@@ -31,6 +31,8 @@ pub enum TargetDescriptionSource {
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CoreType {
+    /// ARMv5TEJ: ARM926EJ-S (EmbeddedICE debug, JTAG-only)
+    Armv5te,
     /// ARMv6-M: Cortex M0, M0+, M1
     Armv6m,
     /// ARMv7-A: Cortex A7, A9, A15
@@ -71,7 +73,8 @@ impl CoreType {
     fn is_arm(&self) -> bool {
         matches!(
             self,
-            CoreType::Armv6m
+            CoreType::Armv5te
+                | CoreType::Armv6m
                 | CoreType::Armv7a
                 | CoreType::Armv7r
                 | CoreType::Armv7em
@@ -317,6 +320,12 @@ impl ChipFamily {
                     CoreAccessOptions::Arm(_) if !core.core_type.is_arm() => {
                         return Err(format!(
                             "Arm options don't match core type {:?} on core {}",
+                            core.core_type, core.name
+                        ));
+                    }
+                    CoreAccessOptions::EmbeddedIce(_) if core.core_type != CoreType::Armv5te => {
+                        return Err(format!(
+                            "EmbeddedIce options don't match core type {:?} on core {}",
                             core.core_type, core.name
                         ));
                     }

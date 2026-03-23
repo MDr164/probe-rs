@@ -203,6 +203,8 @@ impl FlashAlgorithm {
     /// this function returns the maximum size of the header of supported architectures.
     pub fn get_max_algorithm_header_size() -> u64 {
         let algos = [
+            Self::algorithm_header(CoreType::Armv5te, Endian::Big),
+            Self::algorithm_header(CoreType::Armv5te, Endian::Little),
             Self::algorithm_header(CoreType::Armv6m, Endian::Big),
             Self::algorithm_header(CoreType::Armv6m, Endian::Little),
             Self::algorithm_header(CoreType::Armv7a, Endian::Big),
@@ -233,7 +235,7 @@ impl FlashAlgorithm {
                     Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_BKPT_T32_BE,
                 }
             }
-            CoreType::Armv7a | CoreType::Armv7r => match endian {
+            CoreType::Armv5te | CoreType::Armv7a | CoreType::Armv7r => match endian {
                 Endian::Little => &Self::ARM_FLASH_BLOB_HEADER_BKPT_A32_LE,
                 Endian::Big => &Self::ARM_FLASH_BLOB_HEADER_BKPT_A32_BE,
             },

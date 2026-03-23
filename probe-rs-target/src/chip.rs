@@ -163,8 +163,10 @@ pub struct Core {
 /// The data required to access a core
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CoreAccessOptions {
-    /// ARM specific options
+    /// ARM specific options (CoreSight DAP-based cores: Cortex-M, Cortex-A)
     Arm(ArmCoreAccessOptions),
+    /// EmbeddedICE options (pre-CoreSight ARM cores: ARM9/ARM926EJ-S)
+    EmbeddedIce(EmbeddedIceCoreAccessOptions),
     /// RISC-V specific options
     Riscv(RiscvCoreAccessOptions),
     /// Xtensa specific options
@@ -211,6 +213,14 @@ pub struct ArmCoreAccessOptions {
     pub cti_base: Option<u64>,
 
     /// The JTAG TAP index of the core's debug module
+    pub jtag_tap: Option<usize>,
+}
+
+/// The data required to access an ARM core via EmbeddedICE (pre-CoreSight, e.g. ARM926EJ-S)
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+pub struct EmbeddedIceCoreAccessOptions {
+    /// The JTAG TAP index of the core's EmbeddedICE debug module
     pub jtag_tap: Option<usize>,
 }
 

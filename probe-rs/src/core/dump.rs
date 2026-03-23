@@ -1,3 +1,4 @@
+use crate::architecture::arm::core::armv5te_regs::ARMV5TE_CORE_REGISTERS;
 use crate::architecture::arm::core::registers::aarch32::{
     AARCH32_CORE_REGISTERS, AARCH32_WITH_FP_16_CORE_REGISTERS, AARCH32_WITH_FP_32_CORE_REGISTERS,
 };
@@ -392,6 +393,7 @@ impl CoreDump {
                 }
             }
             CoreType::Xtensa => &XTENSA_CORE_REGISTERS,
+            CoreType::Armv5te => &ARMV5TE_CORE_REGISTERS,
         }
     }
 }
