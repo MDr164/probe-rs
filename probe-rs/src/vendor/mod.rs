@@ -26,6 +26,7 @@ pub mod holtek;
 pub mod infineon;
 pub mod microchip;
 pub mod nordicsemi;
+pub mod nuvoton;
 pub mod nxp;
 pub mod raspberrypi;
 pub mod renesas;
@@ -77,6 +78,7 @@ static VENDORS: LazyLock<RwLock<Vec<&'static dyn Vendor>>> = LazyLock::new(|| {
         &microchip::Microchip,
         &infineon::Infineon,
         &holtek::Holtek,
+        &nuvoton::Nuvoton,
         &silabs::SiliconLabs,
         &ti::TexasInstruments,
         &nordicsemi::NordicSemi,
