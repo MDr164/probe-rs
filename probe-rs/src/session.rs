@@ -70,6 +70,8 @@ pub struct SessionConfig {
 }
 
 enum JtagInterface {
+    /// ARM926EJ-S EmbeddedICE (no JTAG-architecture-specific state needed).
+    Armv5te,
     Riscv(RiscvDebugInterfaceState),
     Xtensa(XtensaDebugInterfaceState),
     Unknown,
@@ -79,6 +81,7 @@ impl JtagInterface {
     /// Returns the debug module's intended architecture.
     fn architecture(&self) -> Option<Architecture> {
         match self {
+            JtagInterface::Armv5te => Some(Architecture::Arm),
             JtagInterface::Riscv(_) => Some(Architecture::Riscv),
             JtagInterface::Xtensa(_) => Some(Architecture::Xtensa),
             JtagInterface::Unknown => None,
@@ -89,6 +92,7 @@ impl JtagInterface {
 impl fmt::Debug for JtagInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            JtagInterface::Armv5te => f.write_str("Armv5te"),
             JtagInterface::Riscv(_) => f.write_str("Riscv(..)"),
             JtagInterface::Xtensa(_) => f.write_str("Xtensa(..)"),
             JtagInterface::Unknown => f.write_str("Unknown"),
@@ -124,10 +128,18 @@ impl ArchitectureInterface {
             ArchitectureInterface::Arm(interface) => combined_state.attach_arm(target, interface),
             ArchitectureInterface::Jtag(probe, ifaces) => {
                 let idx = combined_state.jtag_tap_index();
-                if let Some(probe) = probe.try_as_jtag_probe() {
-                    probe.select_target(idx)?;
+                if let Some(jtag) = probe.try_as_jtag_probe() {
+                    jtag.select_target(idx)?;
                 }
                 match &mut ifaces[idx] {
+                    JtagInterface::Armv5te => {
+                        let jtag = probe.try_as_jtag_probe().ok_or_else(|| {
+                            Error::Probe(DebugProbeError::NotImplemented {
+                                function_name: "try_as_jtag_probe (Armv5te)",
+                            })
+                        })?;
+                        combined_state.attach_armv5te(target, jtag)
+                    }
                     JtagInterface::Riscv(state) => {
                         let factory = probe.try_get_riscv_interface_builder()?;
                         let iface = factory.attach_auto(target, state)?;
@@ -173,7 +185,16 @@ impl Session {
             })
             .collect();
 
-        let mut session = if let Architecture::Arm = target.architecture() {
+        // ARM926EJ-S (Armv5te) uses EmbeddedICE via raw JTAG rather than CoreSight DAP.
+        // Route it through attach_jtag instead of attach_arm_debug_interface.
+        let uses_embedded_ice = target
+            .cores
+            .iter()
+            .any(|c| c.core_type == CoreType::Armv5te);
+
+        let mut session = if uses_embedded_ice {
+            Self::attach_jtag(probe, target, attach_method, permissions, cores)?
+        } else if let Architecture::Arm = target.architecture() {
             Self::attach_arm_debug_interface(probe, target, attach_method, permissions, cores)?
         } else {
             Self::attach_jtag(probe, target, attach_method, permissions, cores)?
@@ -399,6 +420,11 @@ impl Session {
             }
 
             interfaces[iface_idx] = match core_arch {
+                Architecture::Arm => {
+                    // Only Armv5te (EmbeddedICE) is routed here; all other ARM targets
+                    // use attach_arm_debug_interface instead.
+                    JtagInterface::Armv5te
+                }
                 Architecture::Riscv => {
                     let factory = probe.try_get_riscv_interface_builder()?;
                     let mut state = factory.create_state();
@@ -410,11 +436,6 @@ impl Session {
                     JtagInterface::Riscv(state)
                 }
                 Architecture::Xtensa => JtagInterface::Xtensa(XtensaDebugInterfaceState::default()),
-                _ => {
-                    return Err(Error::Probe(DebugProbeError::Other(format!(
-                        "Unsupported core architecture {core_arch:?}",
-                    ))));
-                }
             };
         }
 
@@ -429,6 +450,8 @@ impl Session {
 
         // Connect to the cores
         match session.target.debug_sequence.clone() {
+            // EmbeddedICE (Armv5te) — no on_connect sequence needed.
+            DebugSequence::Arm(_) => {}
             DebugSequence::Xtensa(_) => {}
 
             DebugSequence::Riscv(sequence) => {
@@ -436,7 +459,6 @@ impl Session {
                     sequence.on_connect(&mut session.get_riscv_interface(core_id)?)?;
                 }
             }
-            _ => unreachable!("Other architectures should have already been handled"),
         };
 
         Ok(session)

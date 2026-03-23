@@ -5,10 +5,12 @@ use crate::{
             ApV2Address, ArmDebugInterface, FullyQualifiedApAddress,
             core::{CortexARState, CortexMState, armv5te::Armv5teState},
             dp::DpAddress,
+            embedded_ice::EmbeddedIce,
         },
         riscv::{RiscvCoreState, communication_interface::RiscvCommunicationInterface},
         xtensa::{XtensaCoreState, communication_interface::XtensaCommunicationInterface},
     },
+    probe::JtagAccess,
 };
 
 use super::ResolvedCoreOptions;
@@ -196,6 +198,29 @@ impl CombinedCoreState {
             name,
             target,
             crate::architecture::riscv::Riscv32::new(interface, s, debug_sequence)?,
+        ))
+    }
+
+    pub(crate) fn attach_armv5te<'probe>(
+        &'probe mut self,
+        target: &'probe Target,
+        probe: &'probe mut dyn JtagAccess,
+    ) -> Result<Core<'probe>, Error> {
+        let name = &target.cores[self.id].name;
+
+        let SpecificCoreState::Armv5te(s) = &mut self.specific_state else {
+            unreachable!(
+                "The stored core state is not compatible with the ARMv5TEJ architecture. \
+                This should never happen. Please file a bug if it does."
+            );
+        };
+
+        let ice = EmbeddedIce::new(probe);
+        Ok(Core::new(
+            self.id,
+            name,
+            target,
+            crate::architecture::arm::core::armv5te::Armv5te::new(ice, s)?,
         ))
     }
 

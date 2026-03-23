@@ -20,6 +20,54 @@ use crate::{
 };
 
 // ---------------------------------------------------------------------------
+// Named register constants
+// ---------------------------------------------------------------------------
+
+/// Program counter.
+pub const PC: CoreRegister = CoreRegister {
+    roles: &[RegisterRole::Core("R15"), RegisterRole::ProgramCounter],
+    id: RegisterId(15),
+    data_type: RegisterDataType::UnsignedInteger(32),
+    unwind_rule: UnwindRule::SpecialRule,
+};
+
+/// Frame pointer (R11 per AAPCS).
+pub const FP: CoreRegister = CoreRegister {
+    roles: &[RegisterRole::Core("R11"), RegisterRole::FramePointer],
+    id: RegisterId(11),
+    data_type: RegisterDataType::UnsignedInteger(32),
+    unwind_rule: UnwindRule::Preserve,
+};
+
+/// Stack pointer (R13).
+pub const SP: CoreRegister = CoreRegister {
+    roles: &[RegisterRole::Core("R13"), RegisterRole::StackPointer],
+    id: RegisterId(13),
+    data_type: RegisterDataType::UnsignedInteger(32),
+    unwind_rule: UnwindRule::Preserve,
+};
+
+/// Link register / return address (R14).
+pub const RA: CoreRegister = CoreRegister {
+    roles: &[RegisterRole::Core("R14"), RegisterRole::ReturnAddress],
+    id: RegisterId(14),
+    data_type: RegisterDataType::UnsignedInteger(32),
+    unwind_rule: UnwindRule::SpecialRule,
+};
+
+/// Current Program Status Register.
+///
+/// ID 25 (0b1_1001) is the standard ARM GDB protocol register number for CPSR.
+// Exported for potential use by callers; not currently referenced within this crate.
+#[allow(dead_code)]
+pub const CPSR: CoreRegister = CoreRegister {
+    roles: &[RegisterRole::Core("CPSR"), RegisterRole::ProcessorStatus],
+    id: RegisterId(25),
+    data_type: RegisterDataType::UnsignedInteger(32),
+    unwind_rule: UnwindRule::Clear,
+};
+
+// ---------------------------------------------------------------------------
 // Full register set
 // ---------------------------------------------------------------------------
 

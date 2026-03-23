@@ -203,18 +203,46 @@ impl<'probe> EmbeddedIce<'probe> {
         Ok(cpsr)
     }
 
+    /// Write CPSR by injecting `MSR CPSR_cxsf, R0` via the pipeline.
+    pub fn write_cpsr(&mut self, value: u32) -> Result<(), DebugProbeError> {
+        // Save R0.
+        let r0_saved = self.read_core_register(0)?;
+
+        // Load the new CPSR value into R0 via DCC.
+        self.write_core_register(0, value)?;
+
+        // Inject MSR CPSR_cxsf, R0.
+        {
+            let mut pipe = PipelineAccess::new(self.probe);
+            pipe.invalidate();
+            pipe.nop()?;
+            pipe.clock_out(pipeline::arm_msr_cpsr(0), 0, false)?;
+            pipe.nop()?;
+        }
+
+        // Restore R0.
+        self.write_core_register(0, r0_saved)?;
+
+        Ok(())
+    }
+
     // -----------------------------------------------------------------------
     // Memory read/write (word-aligned, word-granularity)
     // -----------------------------------------------------------------------
 
     /// Read a 32-bit word from memory via LDR injection and DCC.
     ///
-    /// The address must be 4-byte aligned.
+    /// The address must be 4-byte aligned.  R0 and R1 are saved and restored
+    /// so the operation is transparent to the halted program.
     pub fn read_word_32(&mut self, address: u32) -> Result<u32, DebugProbeError> {
-        // Step 1: write address into R0 via DCC.
+        // Save R0 and R1.
+        let r0_saved = self.read_core_register(0)?;
+        let r1_saved = self.read_core_register(1)?;
+
+        // Load address into R0 via DCC.
         self.write_core_register(0, address)?;
 
-        // Step 2 – SC0: LDR R1, [R0] then MCR p14, 0, R1, c0, c5, 0
+        // SC0: LDR R1, [R0] then MCR p14, 0, R1, c0, c5, 0
         {
             let mut pipe = PipelineAccess::new(self.probe);
             pipe.invalidate();
@@ -227,23 +255,34 @@ impl<'probe> EmbeddedIce<'probe> {
             pipe.nop()?;
         }
 
-        // Step 3 – SC2: read COMMS_DATA.
-        {
+        // SC2: read COMMS_DATA (the loaded value).
+        let result = {
             let mut ice = EmbeddedIceAccess::new(self.probe);
             ice.invalidate();
-            ice.read_reg(ice::REG_COMMS_DATA)
-        }
+            ice.read_reg(ice::REG_COMMS_DATA)?
+        };
+
+        // Restore R0 and R1.
+        self.write_core_register(1, r1_saved)?;
+        self.write_core_register(0, r0_saved)?;
+
+        Ok(result)
     }
 
     /// Write a 32-bit word to memory via STR injection.
     ///
-    /// The address must be 4-byte aligned.
+    /// The address must be 4-byte aligned.  R0 and R1 are saved and restored
+    /// so the operation is transparent to the halted program.
     pub fn write_word_32(&mut self, address: u32, value: u32) -> Result<(), DebugProbeError> {
-        // Step 1: write address into R0, value into R1 via DCC.
+        // Save R0 and R1.
+        let r0_saved = self.read_core_register(0)?;
+        let r1_saved = self.read_core_register(1)?;
+
+        // Load address into R0, value into R1 via DCC.
         self.write_core_register(0, address)?;
         self.write_core_register(1, value)?;
 
-        // Step 2 – SC0: STR R1, [R0]
+        // SC0: STR R1, [R0]
         {
             let mut pipe = PipelineAccess::new(self.probe);
             pipe.invalidate();
@@ -253,6 +292,10 @@ impl<'probe> EmbeddedIce<'probe> {
             pipe.nop()?;
         }
 
+        // Restore R0 and R1.
+        self.write_core_register(1, r1_saved)?;
+        self.write_core_register(0, r0_saved)?;
+
         Ok(())
     }
 
@@ -260,60 +303,40 @@ impl<'probe> EmbeddedIce<'probe> {
     // Breakpoints (EmbeddedICE watchpoint units)
     // -----------------------------------------------------------------------
 
-    /// Set hardware breakpoint using watchpoint unit `unit` (0 or 1).
+    /// Set a hardware breakpoint using watchpoint unit 0.
     ///
-    /// Configures the watchpoint as an instruction fetch comparator at `addr`.
+    /// Only unit 0 is available for user breakpoints; unit 1 is reserved for
+    /// single-step (see [`step()`](Self::step)).
     pub fn set_breakpoint(&mut self, unit: usize, addr: u32) -> Result<(), DebugProbeError> {
-        let mut ice = EmbeddedIceAccess::new(self.probe);
-        let (av, am, dv, dm, cv, cm) = match unit {
-            0 => (
-                REG_W0_ADDR_VALUE,
-                REG_W0_ADDR_MASK,
-                REG_W0_DATA_VALUE,
-                REG_W0_DATA_MASK,
-                REG_W0_CTRL_VALUE,
-                REG_W0_CTRL_MASK,
-            ),
-            1 => (
-                ice::REG_W1_ADDR_VALUE,
-                ice::REG_W1_ADDR_MASK,
-                ice::REG_W1_DATA_VALUE,
-                ice::REG_W1_DATA_MASK,
-                ice::REG_W1_CTRL_VALUE,
-                ice::REG_W1_CTRL_MASK,
-            ),
-            _ => {
-                return Err(DebugProbeError::NotImplemented {
-                    function_name: "set_breakpoint: unit > 1",
-                });
-            }
-        };
+        if unit != 0 {
+            return Err(DebugProbeError::NotImplemented {
+                function_name: "set_breakpoint: only unit 0 available (unit 1 reserved for step)",
+            });
+        }
 
+        let mut ice = EmbeddedIceAccess::new(self.probe);
         // Address comparator: exact match, no mask.
-        ice.write_reg(av, addr)?;
-        ice.write_reg(am, 0x0000_0000)?; // mask=0: compare all bits
+        ice.write_reg(REG_W0_ADDR_VALUE, addr)?;
+        ice.write_reg(REG_W0_ADDR_MASK, 0x0000_0000)?;
         // Data: don't care (mask=all-ones).
-        ice.write_reg(dv, 0x0000_0000)?;
-        ice.write_reg(dm, 0xFFFF_FFFF)?;
+        ice.write_reg(REG_W0_DATA_VALUE, 0x0000_0000)?;
+        ice.write_reg(REG_W0_DATA_MASK, 0xFFFF_FFFF)?;
         // Control: fetch (nOPC=0), enabled.
-        ice.write_reg(cv, WP0_CTRL_BREAK)?;
-        ice.write_reg(cm, WP0_CTRL_MASK)?;
+        ice.write_reg(REG_W0_CTRL_VALUE, WP0_CTRL_BREAK)?;
+        ice.write_reg(REG_W0_CTRL_MASK, WP0_CTRL_MASK)?;
         Ok(())
     }
 
-    /// Clear a hardware breakpoint.
+    /// Clear a hardware breakpoint on unit 0.
     pub fn clear_breakpoint(&mut self, unit: usize) -> Result<(), DebugProbeError> {
+        if unit != 0 {
+            return Err(DebugProbeError::NotImplemented {
+                function_name: "clear_breakpoint: only unit 0 available (unit 1 reserved for step)",
+            });
+        }
+
         let mut ice = EmbeddedIceAccess::new(self.probe);
-        let cv = match unit {
-            0 => REG_W0_CTRL_VALUE,
-            1 => ice::REG_W1_CTRL_VALUE,
-            _ => {
-                return Err(DebugProbeError::NotImplemented {
-                    function_name: "clear_breakpoint: unit > 1",
-                });
-            }
-        };
-        ice.write_reg(cv, 0)?; // clear ENABLE bit
+        ice.write_reg(REG_W0_CTRL_VALUE, 0)?;
         Ok(())
     }
 
