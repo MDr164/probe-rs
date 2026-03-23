@@ -7,6 +7,7 @@ pub mod component;
 // TODO: Check if this should be public.
 pub mod core;
 pub mod dp;
+pub mod embedded_ice;
 pub mod memory;
 pub mod sequences;
 pub mod swo;
