@@ -1,0 +1,328 @@
+# Nuvoton NUC980 Series SoC target description.
+#
+# CPU: ARM926EJ-S (ARMv5TEJ), up to 300 MHz
+# Debug: EmbeddedICE version 6 via JTAG (irlen=4, ircapture=0x1, irmask=0xF)
+# Expected IDCODE: 0x07926f0f  (provisional; matches NUC910 / ARM926EJ-S)
+#
+# Memory map:
+#   0x0000_0000 – SDRAM (external, 16–128 MB depending on variant)
+#   0x3C00_0000 – 16 KB internal SRAM
+#   0xB000_0000 – System Manager registers (PDID etc.)
+#
+# Flash: None internal. SPI NOR/NAND or SD card via external controller.
+#
+# Chip detection: read PDID at 0xB000_0000; NUC980 = 0x1030_D016
+#
+# JEP106: manufacturer 0xB3 (cc=0, id=0x59 = Nuvoton Technology)
+#
+# Note: All 12 NUC980 variants (DF71YC, DF71Y, DF61YC, DK71YC, DK71Y,
+# DK61YC, DK61Y, DK41Y, DR61YC, DR61Y, DR41YC, DR41Y) share the same
+# core and memory layout; they differ only in package and peripheral set.
+---
+name: NUC980 Series
+manufacturer:
+  id: 0x59
+  cc: 0x0
+generated_from_pack: false
+variants:
+- name: NUC980DF71YC
+  cores:
+    - name: cpu0
+      type: armv5te
+      core_access_options: !EmbeddedIce
+        jtag_tap: 0
+  jtag:
+    scan_chain:
+      - name: cpu0
+        ir_len: 4
+  memory_map:
+    - !Ram
+      name: SDRAM
+      range:
+        start: 0x00000000
+        end: 0x08000000
+      cores:
+        - cpu0
+    - !Ram
+      name: SRAM
+      range:
+        start: 0x3C000000
+        end: 0x3C004000
+      cores:
+        - cpu0
+- name: NUC980DF71Y
+  cores:
+    - name: cpu0
+      type: armv5te
+      core_access_options: !EmbeddedIce
+        jtag_tap: 0
+  jtag:
+    scan_chain:
+      - name: cpu0
+        ir_len: 4
+  memory_map:
+    - !Ram
+      name: SDRAM
+      range:
+        start: 0x00000000
+        end: 0x08000000
+      cores:
+        - cpu0
+    - !Ram
+      name: SRAM
+      range:
+        start: 0x3C000000
+        end: 0x3C004000
+      cores:
+        - cpu0
+- name: NUC980DF61YC
+  cores:
+    - name: cpu0
+      type: armv5te
+      core_access_options: !EmbeddedIce
+        jtag_tap: 0
+  jtag:
+    scan_chain:
+      - name: cpu0
+        ir_len: 4
+  memory_map:
+    - !Ram
+      name: SDRAM
+      range:
+        start: 0x00000000
+        end: 0x04000000
+      cores:
+        - cpu0
+    - !Ram
+      name: SRAM
+      range:
+        start: 0x3C000000
+        end: 0x3C004000
+      cores:
+        - cpu0
+- name: NUC980DK71YC
+  cores:
+    - name: cpu0
+      type: armv5te
+      core_access_options: !EmbeddedIce
+        jtag_tap: 0
+  jtag:
+    scan_chain:
+      - name: cpu0
+        ir_len: 4
+  memory_map:
+    - !Ram
+      name: SDRAM
+      range:
+        start: 0x00000000
+        end: 0x08000000
+      cores:
+        - cpu0
+    - !Ram
+      name: SRAM
+      range:
+        start: 0x3C000000
+        end: 0x3C004000
+      cores:
+        - cpu0
+- name: NUC980DK71Y
+  cores:
+    - name: cpu0
+      type: armv5te
+      core_access_options: !EmbeddedIce
+        jtag_tap: 0
+  jtag:
+    scan_chain:
+      - name: cpu0
+        ir_len: 4
+  memory_map:
+    - !Ram
+      name: SDRAM
+      range:
+        start: 0x00000000
+        end: 0x08000000
+      cores:
+        - cpu0
+    - !Ram
+      name: SRAM
+      range:
+        start: 0x3C000000
+        end: 0x3C004000
+      cores:
+        - cpu0
+- name: NUC980DK61YC
+  cores:
+    - name: cpu0
+      type: armv5te
+      core_access_options: !EmbeddedIce
+        jtag_tap: 0
+  jtag:
+    scan_chain:
+      - name: cpu0
+        ir_len: 4
+  memory_map:
+    - !Ram
+      name: SDRAM
+      range:
+        start: 0x00000000
+        end: 0x04000000
+      cores:
+        - cpu0
+    - !Ram
+      name: SRAM
+      range:
+        start: 0x3C000000
+        end: 0x3C004000
+      cores:
+        - cpu0
+- name: NUC980DK61Y
+  cores:
+    - name: cpu0
+      type: armv5te
+      core_access_options: !EmbeddedIce
+        jtag_tap: 0
+  jtag:
+    scan_chain:
+      - name: cpu0
+        ir_len: 4
+  memory_map:
+    - !Ram
+      name: SDRAM
+      range:
+        start: 0x00000000
+        end: 0x04000000
+      cores:
+        - cpu0
+    - !Ram
+      name: SRAM
+      range:
+        start: 0x3C000000
+        end: 0x3C004000
+      cores:
+        - cpu0
+- name: NUC980DK41Y
+  cores:
+    - name: cpu0
+      type: armv5te
+      core_access_options: !EmbeddedIce
+        jtag_tap: 0
+  jtag:
+    scan_chain:
+      - name: cpu0
+        ir_len: 4
+  memory_map:
+    - !Ram
+      name: SDRAM
+      range:
+        start: 0x00000000
+        end: 0x01000000
+      cores:
+        - cpu0
+    - !Ram
+      name: SRAM
+      range:
+        start: 0x3C000000
+        end: 0x3C004000
+      cores:
+        - cpu0
+- name: NUC980DR61YC
+  cores:
+    - name: cpu0
+      type: armv5te
+      core_access_options: !EmbeddedIce
+        jtag_tap: 0
+  jtag:
+    scan_chain:
+      - name: cpu0
+        ir_len: 4
+  memory_map:
+    - !Ram
+      name: SDRAM
+      range:
+        start: 0x00000000
+        end: 0x04000000
+      cores:
+        - cpu0
+    - !Ram
+      name: SRAM
+      range:
+        start: 0x3C000000
+        end: 0x3C004000
+      cores:
+        - cpu0
+- name: NUC980DR61Y
+  cores:
+    - name: cpu0
+      type: armv5te
+      core_access_options: !EmbeddedIce
+        jtag_tap: 0
+  jtag:
+    scan_chain:
+      - name: cpu0
+        ir_len: 4
+  memory_map:
+    - !Ram
+      name: SDRAM
+      range:
+        start: 0x00000000
+        end: 0x04000000
+      cores:
+        - cpu0
+    - !Ram
+      name: SRAM
+      range:
+        start: 0x3C000000
+        end: 0x3C004000
+      cores:
+        - cpu0
+- name: NUC980DR41YC
+  cores:
+    - name: cpu0
+      type: armv5te
+      core_access_options: !EmbeddedIce
+        jtag_tap: 0
+  jtag:
+    scan_chain:
+      - name: cpu0
+        ir_len: 4
+  memory_map:
+    - !Ram
+      name: SDRAM
+      range:
+        start: 0x00000000
+        end: 0x01000000
+      cores:
+        - cpu0
+    - !Ram
+      name: SRAM
+      range:
+        start: 0x3C000000
+        end: 0x3C004000
+      cores:
+        - cpu0
+- name: NUC980DR41Y
+  cores:
+    - name: cpu0
+      type: armv5te
+      core_access_options: !EmbeddedIce
+        jtag_tap: 0
+  jtag:
+    scan_chain:
+      - name: cpu0
+        ir_len: 4
+  memory_map:
+    - !Ram
+      name: SDRAM
+      range:
+        start: 0x00000000
+        end: 0x01000000
+      cores:
+        - cpu0
+    - !Ram
+      name: SRAM
+      range:
+        start: 0x3C000000
+        end: 0x3C004000
+      cores:
+        - cpu0
+flash_algorithms: []
